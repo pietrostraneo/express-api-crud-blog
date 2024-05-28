@@ -1,13 +1,14 @@
 const path = require("path");
 const fs = require("fs");
 
-let posts = require("../db/db.js");
+let posts = require("../db/db.json");
 
 const slugify = require('slugify');
 
 const updatePost = (newPost) => {
-    const filePath = path.join(__dirname, '../db/db.js');
+    const filePath = path.join(__dirname, '../db/db.json');
     fs.writeFileSync(filePath, JSON.stringify(newPost));
+    posts = newPost;
 };
 
 const deletePublicFile = (fileName) => {
@@ -55,9 +56,20 @@ const create = (req, res) => {
         tags
     };
 
-    if (!posts.some(p => p.slug === slugify(title))) {
-        posts.push(newPost);
+    if (posts.some(p => p.slug === slugify(title))) {
         updatePost([...posts, newPost]);
+        res.format({
+            json: () => {
+                res.status(201).json({
+                    status: 201,
+                    message: 'Post created successfully',
+                    data: newPost
+                })
+            },
+            html: () => {
+                res.status(201).send('Post created successfully');
+            }
+        })
     } else {
         req.file?.filename && deletePublicFile(req.file.filename);
         res.format({
@@ -74,20 +86,44 @@ const create = (req, res) => {
         })
     }
 
+
+};
+
+const destroy = (req, res) => {
+
+    const { slug } = req.params;
+    const postToDelete = posts.find(p => p.slug === slug);
+    if (!postToDelete) {
+        res.format({
+            json: () => {
+                res.status(404).json({
+                    status: 404,
+                    error: 'Post not found'
+                })
+            },
+            html: () => {
+                res.status(404).send('Post not found');
+            }
+        })
+    }
+
+    deletePublicFile(postToDelete.image);
+    updatePost(posts.filter(p => p.slug !== postToDelete.slug));
+
     res.format({
         json: () => {
-            res.status(201).json({
-                status: 201,
-                message: 'Post created successfully',
-                data: newPost
+            res.status(200).json({
+                status: 200,
+                message: 'Post deleted successfully'
             })
         },
         html: () => {
-            res.status(201).send('Post created successfully');
+            res.status(200).send(`Post con slug ${slug} eliminato con successo.`);
         }
     })
-};
+}
 
 module.exports = {
     create,
+    destroy
 };
