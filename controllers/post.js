@@ -48,15 +48,18 @@ const create = (req, res) => {
         })
     }
 
+    let postSlug = slugify(title);
+
     const newPost = {
         title,
-        slug: slugify(title),
+        slug: postSlug,
         content,
         image: req.file.filename,
         tags
     };
 
-    if (posts.some(p => p.slug === slugify(title))) {
+
+    if (!posts.find(p => p.slug === postSlug)) {
         updatePost([...posts, newPost]);
         res.format({
             json: () => {
